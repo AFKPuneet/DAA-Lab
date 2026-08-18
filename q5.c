@@ -1,62 +1,85 @@
 #include <stdio.h>
+#include <stdlib.h>
 
-void selectionSort(int A[], int n)
+struct Interval
 {
-    int i, j, minIndex, temp;
+    int start;
+    int end;
+};
 
-    for (i = 0; i < n - 1; i++)
-    {
-        minIndex = i;
-
-        // Find minimum element in A[i...n-1]
-        for (j = i + 1; j < n; j++)
-        {
-            if (A[j] < A[minIndex])
-            {
-                minIndex = j;
-            }
-        }
-
-        // Exchange A[i] and A[minIndex]
-        temp = A[i];
-        A[i] = A[minIndex];
-        A[minIndex] = temp;
-    }
-}
-
-void display(int A[], int n)
+// Compare intervals based on starting point
+int compare(const void *a, const void *b)
 {
-    for (int i = 0; i < n; i++)
-    {
-        printf("%d ", A[i]);
-    }
+    struct Interval *i1 = (struct Interval *)a;
+    struct Interval *i2 = (struct Interval *)b;
 
-    printf("\n");
+    return i1->start - i2->start;
 }
 
 int main()
 {
     int n;
 
-    printf("Enter number of elements: ");
+    printf("Enter number of intervals: ");
     scanf("%d", &n);
 
-    int A[n];
+    struct Interval intervals[n];
+    struct Interval result[n];
 
-    printf("Enter %d elements:\n", n);
+    printf("Enter the intervals (start end):\n");
 
     for (int i = 0; i < n; i++)
     {
-        scanf("%d", &A[i]);
+        scanf("%d %d",
+              &intervals[i].start,
+              &intervals[i].end);
     }
 
-    printf("\nOriginal array:\n");
-    display(A, n);
+    // Sort intervals according to start time
+    qsort(intervals, n, sizeof(struct Interval), compare);
 
-    selectionSort(A, n);
+    int count = 0;
 
-    printf("\nSorted array:\n");
-    display(A, n);
+    // Start with the first interval
+    int currentStart = intervals[0].start;
+    int currentEnd = intervals[0].end;
+
+    for (int i = 1; i < n; i++)
+    {
+        // Check if intervals overlap
+        if (intervals[i].start <= currentEnd)
+        {
+            // Merge intervals
+            if (intervals[i].end > currentEnd)
+                currentEnd = intervals[i].end;
+        }
+        else
+        {
+            // Store the current merged interval
+            result[count].start = currentStart;
+            result[count].end = currentEnd;
+            count++;
+
+            // Start a new interval
+            currentStart = intervals[i].start;
+            currentEnd = intervals[i].end;
+        }
+    }
+
+    // Store the last interval
+    result[count].start = currentStart;
+    result[count].end = currentEnd;
+    count++;
+
+    // Print merged intervals
+    printf("\nMerged intervals:\n");
+
+    for (int i = 0; i < count; i++)
+    {
+        printf("(%d,%d) ", result[i].start, result[i].end);
+    }
+
+    printf("\n");
 
     return 0;
 }

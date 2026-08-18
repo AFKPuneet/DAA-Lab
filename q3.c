@@ -1,84 +1,97 @@
 #include <stdio.h>
+#include <stdlib.h>
 
-struct MinMax
+// Comparison function for qsort()
+int compare(const void *a, const void *b)
 {
-    int min;
-    int max;
-};
+    return (*(int *)a - *(int *)b);
+}
 
-struct MinMax findMinMax(int arr[], int low, int high)
+// Binary Search
+int binarySearch(int arr[], int n, int key, int start)
 {
-    struct MinMax result;
-    struct MinMax left;
-    struct MinMax right;
+    int low = start;
+    int high = n - 1;
 
-    // Case 1: Only one element
-    if (low == high)
+    while (low <= high)
     {
-        result.min = arr[low];
-        result.max = arr[low];
+        int mid = low + (high - low) / 2;
 
-        return result;
-    }
+        if (arr[mid] == key)
+            return mid;
 
-    // Case 2: Two elements
-    if (high == low + 1)
-    {
-        if (arr[low] < arr[high])
-        {
-            result.min = arr[low];
-            result.max = arr[high];
-        }
+        if (arr[mid] < key)
+            low = mid + 1;
         else
-        {
-            result.min = arr[high];
-            result.max = arr[low];
-        }
-
-        return result;
+            high = mid - 1;
     }
 
-    // Divide
-    int mid = (low + high) / 2;
+    return -1;
+}
 
-    // Conquer
-    left = findMinMax(arr, low, mid);
-    right = findMinMax(arr, mid + 1, high);
+// Recursive function to select k-1 elements
+int findKSum(int arr[], int n, int k, int T,
+             int start, int depth, int sum)
+{
+    // If k-1 elements have been selected
+    if (depth == k - 1)
+    {
+        int target = T - sum;
 
-    // Combine
-    if (left.max > right.max)
-        result.max = left.max;
-    else
-        result.max = right.max;
+        // Search target only after the selected elements
+        // to avoid reusing an element
+        if (binarySearch(arr, n, target, start) != -1)
+            return 1;
 
-    if (left.min < right.min)
-        result.min = left.min;
-    else
-        result.min = right.min;
+        return 0;
+    }
 
-    return result;
+    for (int i = start; i < n; i++)
+    {
+        if (findKSum(arr, n, k, T,
+                     i + 1, depth + 1,
+                     sum + arr[i]))
+        {
+            return 1;
+        }
+    }
+
+    return 0;
 }
 
 int main()
 {
-    int n;
+    int n, k, T;
 
     printf("Enter number of elements: ");
     scanf("%d", &n);
 
-    int arr[n];
+    int S[n];
 
-    printf("Enter %d elements:\n", n);
-
+    printf("Enter the elements:\n");
     for (int i = 0; i < n; i++)
+        scanf("%d", &S[i]);
+
+    printf("Enter k: ");
+    scanf("%d", &k);
+
+    printf("Enter T: ");
+    scanf("%d", &T);
+
+    // Sort the set
+    qsort(S, n, sizeof(int), compare);
+
+    // Need at least k elements
+    if (k > n || k <= 0)
     {
-        scanf("%d", &arr[i]);
+        printf("Invalid value of k.\n");
+        return 0;
     }
 
-    struct MinMax result = findMinMax(arr, 0, n - 1);
-
-    printf("\nMinimum element = %d\n", result.min);
-    printf("Maximum element = %d\n", result.max);
+    if (findKSum(S, n, k, T, 0, 0, 0))
+        printf("\nYes, %d elements add up to %d.\n", k, T);
+    else
+        printf("\nNo, %d elements add up to %d.\n", k, T);
 
     return 0;
 }

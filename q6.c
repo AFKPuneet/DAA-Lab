@@ -1,84 +1,70 @@
 #include <stdio.h>
+#include <stdlib.h>
 
-struct MinMax
+struct Event
 {
-    int min;
-    int max;
+    int point;
+    int type;   // +1 = start, -1 = end
 };
 
-struct MinMax findMinMax(int arr[], int low, int high)
+// Sort by point.
+// If points are equal, start (+1) comes before end (-1).
+int compare(const void *a, const void *b)
 {
-    struct MinMax result;
-    struct MinMax left;
-    struct MinMax right;
+    struct Event *e1 = (struct Event *)a;
+    struct Event *e2 = (struct Event *)b;
 
-    // Case 1: Only one element
-    if (low == high)
-    {
-        result.min = arr[low];
-        result.max = arr[low];
+    if (e1->point != e2->point)
+        return e1->point - e2->point;
 
-        return result;
-    }
-
-    // Case 2: Two elements
-    if (high == low + 1)
-    {
-        if (arr[low] < arr[high])
-        {
-            result.min = arr[low];
-            result.max = arr[high];
-        }
-        else
-        {
-            result.min = arr[high];
-            result.max = arr[low];
-        }
-
-        return result;
-    }
-
-    // Divide
-    int mid = (low + high) / 2;
-
-    // Conquer
-    left = findMinMax(arr, low, mid);
-    right = findMinMax(arr, mid + 1, high);
-
-    // Combine
-    if (left.max > right.max)
-        result.max = left.max;
-    else
-        result.max = right.max;
-
-    if (left.min < right.min)
-        result.min = left.min;
-    else
-        result.min = right.min;
-
-    return result;
+    return e2->type - e1->type;
 }
 
 int main()
 {
     int n;
 
-    printf("Enter number of elements: ");
+    printf("Enter number of intervals: ");
     scanf("%d", &n);
 
-    int arr[n];
+    struct Event events[2 * n];
 
-    printf("Enter %d elements:\n", n);
+    printf("Enter the intervals (left right):\n");
 
     for (int i = 0; i < n; i++)
     {
-        scanf("%d", &arr[i]);
+        int l, r;
+
+        scanf("%d %d", &l, &r);
+
+        events[2 * i].point = l;
+        events[2 * i].type = 1;
+
+        events[2 * i + 1].point = r;
+        events[2 * i + 1].type = -1;
     }
 
-    struct MinMax result = findMinMax(arr, 0, n - 1);
+    // Sort all events
+    qsort(events, 2 * n, sizeof(struct Event), compare);
 
-    printf("\nMinimum element = %d\n", result.min);
-    printf("Maximum element = %d\n", result.max);
+    int current = 0;
+    int maximum = 0;
+    int maxPoint = 0;
+
+    // Sweep from left to right
+    for (int i = 0; i < 2 * n; i++)
+    {
+        current += events[i].type;
+
+        if (current > maximum)
+        {
+            maximum = current;
+            maxPoint = events[i].point;
+        }
+    }
+
+    printf("\nPoint with maximum overlap = %d\n", maxPoint);
+    printf("Maximum number of intervals = %d\n", maximum);
 
     return 0;
 }
