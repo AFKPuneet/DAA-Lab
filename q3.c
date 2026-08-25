@@ -1,97 +1,95 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
-// Comparison function for qsort()
-int compare(const void *a, const void *b)
-{
-    return (*(int *)a - *(int *)b);
+void swap(int *a, int *b) {
+    int temp = *a;
+    *a = *b;
+    *b = temp;
 }
 
-// Binary Search
-int binarySearch(int arr[], int n, int key, int start)
-{
-    int low = start;
-    int high = n - 1;
+int partition(int arr[], int low, int high) {
+    int pivot = arr[high];
+    int i = low - 1;
 
-    while (low <= high)
-    {
-        int mid = low + (high - low) / 2;
-
-        if (arr[mid] == key)
-            return mid;
-
-        if (arr[mid] < key)
-            low = mid + 1;
-        else
-            high = mid - 1;
-    }
-
-    return -1;
-}
-
-// Recursive function to select k-1 elements
-int findKSum(int arr[], int n, int k, int T,
-             int start, int depth, int sum)
-{
-    // If k-1 elements have been selected
-    if (depth == k - 1)
-    {
-        int target = T - sum;
-
-        // Search target only after the selected elements
-        // to avoid reusing an element
-        if (binarySearch(arr, n, target, start) != -1)
-            return 1;
-
-        return 0;
-    }
-
-    for (int i = start; i < n; i++)
-    {
-        if (findKSum(arr, n, k, T,
-                     i + 1, depth + 1,
-                     sum + arr[i]))
-        {
-            return 1;
+    for (int j = low; j < high; j++) {
+        if (arr[j] < pivot) {
+            i++;
+            swap(&arr[i], &arr[j]);
         }
     }
 
-    return 0;
+    swap(&arr[i + 1], &arr[high]);
+    return i + 1;
 }
 
-int main()
-{
-    int n, k, T;
+void quickSort(int arr[], int low, int high) {
+    if (low < high) {
+        int pivotIndex = partition(arr, low, high);
+
+        quickSort(arr, low, pivotIndex - 1);
+        quickSort(arr, pivotIndex + 1, high);
+    }
+}
+
+int main() {
+    int n;
 
     printf("Enter number of elements: ");
     scanf("%d", &n);
 
-    int S[n];
+    int arr[n];
 
-    printf("Enter the elements:\n");
-    for (int i = 0; i < n; i++)
-        scanf("%d", &S[i]);
+    FILE *fp = fopen("random.txt", "w");
 
-    printf("Enter k: ");
-    scanf("%d", &k);
-
-    printf("Enter T: ");
-    scanf("%d", &T);
-
-    // Sort the set
-    qsort(S, n, sizeof(int), compare);
-
-    // Need at least k elements
-    if (k > n || k <= 0)
-    {
-        printf("Invalid value of k.\n");
-        return 0;
+    if (fp == NULL) {
+        printf("Error opening file!\n");
+        return 1;
     }
 
-    if (findKSum(S, n, k, T, 0, 0, 0))
-        printf("\nYes, %d elements add up to %d.\n", k, T);
-    else
-        printf("\nNo, %d elements add up to %d.\n", k, T);
+    // Generate and store random numbers in file
+    srand(time(NULL));
+
+    for (int i = 0; i < n; i++) {
+        int num = rand() % 1000;
+        fprintf(fp, "%d ", num);
+    }
+
+    fclose(fp);
+
+    // Read numbers from file
+    fp = fopen("random.txt", "r");
+
+    if (fp == NULL) {
+        printf("Error opening file!\n");
+        return 1;
+    }
+
+    for (int i = 0; i < n; i++) {
+        fscanf(fp, "%d", &arr[i]);
+    }
+
+    fclose(fp);
+
+    // Quick Sort
+    quickSort(arr, 0, n - 1);
+
+    // Store sorted elements in another file
+    fp = fopen("sorted.txt", "w");
+
+    if (fp == NULL) {
+        printf("Error opening file!\n");
+        return 1;
+    }
+
+    for (int i = 0; i < n; i++) {
+        fprintf(fp, "%d ", arr[i]);
+    }
+
+    fclose(fp);
+
+    printf("Random elements stored in random.txt\n");
+    printf("Sorted elements stored in sorted.txt\n");
 
     return 0;
 }

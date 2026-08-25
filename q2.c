@@ -1,71 +1,68 @@
 #include <stdio.h>
-#include <stdlib.h>
 
-// Comparison function for qsort()
-int compare(const void *a, const void *b)
-{
-    return (*(int *)a - *(int *)b);
+void swap(int *a, int *b) {
+    int temp = *a;
+    *a = *b;
+    *b = temp;
 }
 
-// Binary Search
-int binarySearch(int arr[], int n, int key)
-{
-    int low = 0;
-    int high = n-1;
+int partition(int arr[], int low, int high) {
+    int pivot = arr[high];
+    int i = low;
 
-    while (low <= high)
-    {
-        int mid = low + (high - low) / 2;
-
-        if (arr[mid] == key)
-            return 1;
-
-        if (arr[mid] < key)
-            low = mid + 1;
-        else
-            high = mid - 1;
-    }
-
-    return 0;
-}
-
-int main()
-{
-    int n, x;
-
-    printf("Enter size of sets: ");
-    scanf("%d", &n);
-
-    int S1[n], S2[n];
-
-    printf("Enter elements of S1:\n");
-    for (int i = 0; i < n; i++)
-        scanf("%d", &S1[i]);
-
-    printf("Enter elements of S2:\n");
-    for (int i = 0; i < n; i++)
-        scanf("%d", &S2[i]);
-
-    printf("Enter x: ");
-    scanf("%d", &x);
-
-    // Sort S2
-    qsort(S2, n, sizeof(int), compare);
-
-    // Search for required pair
-    for (int i = 0; i < n; i++)
-    {
-        int target = x - S1[i];
-
-        if (binarySearch(S2, n, target))
-        {
-            printf("\nPair exists: %d + %d = %d\n",
-                   S1[i], target, x);
-            return 0;
+    for (int j = low; j < high; j++) {
+        if (arr[j] <= pivot) {
+            swap(&arr[i], &arr[j]);
+            i++;
         }
     }
 
-    printf("\nNo pair exists whose sum is %d\n", x);
+    swap(&arr[i], &arr[high]);
+
+    return i;
+}
+
+int quickSelect(int arr[], int low, int high, int k) {
+    if (low == high)
+        return arr[low];
+
+    int pivotIndex = partition(arr, low, high);
+
+    if (pivotIndex == k)
+        return arr[pivotIndex];
+
+    else if (k < pivotIndex)
+        return quickSelect(arr, low, pivotIndex - 1, k);
+
+    else
+        return quickSelect(arr, pivotIndex + 1, high, k);
+}
+
+int main() {
+    int n, k;
+
+    printf("Enter the number of elements: ");
+    scanf("%d", &n);
+
+    int arr[n];
+
+    printf("Enter the elements:\n");
+    for (int i = 0; i < n; i++) {
+        scanf("%d", &arr[i]);
+    }
+
+    printf("Enter K: ");
+    scanf("%d", &k);
+
+    if (k < 1 || k > n) {
+        printf("Invalid value of K\n");
+        return 0;
+    }
+
+    // Array index starts from 0, so K-1
+    int result = quickSelect(arr, 0, n - 1, k - 1);
+
+    printf("%dth smallest element is: %d\n", k, result);
 
     return 0;
 }

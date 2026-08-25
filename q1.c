@@ -1,48 +1,67 @@
 #include <stdio.h>
-#include <string.h>
+#include <stdlib.h>
 
-struct Item {
-    int number;
-    char colour[10];
-};
+void swap(int *a, int *b) {
+    int temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+int partition(int arr[], int low, int high) {
+    int pivot = arr[high];
+    int i = low;
+
+    for (int j = low; j < high; j++) {
+        if (arr[j] <= pivot) {
+            swap(&arr[i], &arr[j]);
+            i++;
+        }
+    }
+
+    swap(&arr[i], &arr[high]);
+    return i;
+}
+
+int quickSelect(int arr[], int low, int high, int k) {
+    if (low == high)
+        return arr[low];
+
+    int pivotIndex = partition(arr, low, high);
+
+    if (pivotIndex == k)
+        return arr[pivotIndex];
+    else if (pivotIndex > k)
+        return quickSelect(arr, low, pivotIndex - 1, k);
+    else
+        return quickSelect(arr, pivotIndex + 1, high, k);
+}
 
 int main() {
     int n;
 
-    printf("Enter number of items: ");
+    printf("Enter number of elements: ");
     scanf("%d", &n);
 
-    struct Item items[n];
-    struct Item red[n], blue[n], yellow[n];
+    int arr[n];
 
-    int r = 0, b = 0, y = 0;
+    printf("Enter %d numbers:\n", n);
 
-    printf("Enter %d pairs (number colour):\n", n);
+    for (int i = 0; i < n; i++)
+        scanf("%d", &arr[i]);
 
-    for (int i = 0; i < n; i++) {
-        scanf("%d %s", &items[i].number, items[i].colour);
+    if (n % 2 != 0) {
+        // Odd number of elements
+        int median = quickSelect(arr, 0, n - 1, n / 2);
+        printf("Median = %d\n", median);
+    } 
+    else {
+        // Even number of elements
+        int a = quickSelect(arr, 0, n - 1, n / 2 - 1);
+        int b = quickSelect(arr, 0, n - 1, n / 2);
 
-        if (strcmp(items[i].colour, "red") == 0) {
-            red[r++] = items[i];
-        }
-        else if (strcmp(items[i].colour, "blue") == 0) {
-            blue[b++] = items[i];
-        }
-        else if (strcmp(items[i].colour, "yellow") == 0) {
-            yellow[y++] = items[i];
-        }
+        float median = (a + b) / 2.0;
+        printf("Median = %.2f\n", median);
     }
-
-    printf("\nSorted by colour:\n");
-
-    for (int i = 0; i < r; i++)
-        printf("%d red\n", red[i].number);
-
-    for (int i = 0; i < b; i++)
-        printf("%d blue\n", blue[i].number);
-
-    for (int i = 0; i < y; i++)
-        printf("%d yellow\n", yellow[i].number);
 
     return 0;
 }
