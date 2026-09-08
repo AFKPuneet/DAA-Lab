@@ -1,95 +1,124 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
+#include <math.h>
+#include <complex.h>
 
-void swap(int *a, int *b) {
-    int temp = *a;
-    *a = *b;
-    *b = temp;
-}
+#define PI acos(-1.0)
 
-int partition(int arr[], int low, int high) {
-    int pivot = arr[high];
-    int i = low - 1;
+/* Recursive FFT */
+void FFT(complex double *a, int n, int invert)
+{
+    if (n == 1)
+        return;
 
-    for (int j = low; j < high; j++) {
-        if (arr[j] < pivot) {
-            i++;
-            swap(&arr[i], &arr[j]);
-        }
+    complex double *even = malloc(n / 2 * sizeof(complex double));
+    complex double *odd  = malloc(n / 2 * sizeof(complex double));
+
+    for (int i = 0; i < n / 2; i++)
+    {
+        even[i] = a[2 * i];
+        odd[i]  = a[2 * i + 1];
     }
 
-    swap(&arr[i + 1], &arr[high]);
-    return i + 1;
-}
+    FFT(even, n / 2, invert);
+    FFT(odd, n / 2, invert);
 
-void quickSort(int arr[], int low, int high) {
-    if (low < high) {
-        int pivotIndex = partition(arr, low, high);
+    double angle = 2 * PI / n * (invert ? -1 : 1);
+    complex double w = 1;
+    complex double wn = cos(angle) + I * sin(angle);
 
-        quickSort(arr, low, pivotIndex - 1);
-        quickSort(arr, pivotIndex + 1, high);
+    for (int i = 0; i < n / 2; i++)
+    {
+        complex double t = w * odd[i];
+
+        a[i] = even[i] + t;
+        a[i + n / 2] = even[i] - t;
+
+        w *= wn;
     }
+
+    free(even);
+    free(odd);
 }
 
-int main() {
-    int n;
+/* Convolution using FFT */
+void convolution(double A[], int m,
+                 double B[], int n,
+                 double C[])
+{
+    int size = 1;
 
-    printf("Enter number of elements: ");
+    while (size < m + n - 1)
+        size *= 2;
+
+    complex double *FA =
+        calloc(size, sizeof(complex double));
+
+    complex double *FB =
+        calloc(size, sizeof(complex double));
+
+    /* Copy input vectors */
+    for (int i = 0; i < m; i++)
+        FA[i] = A[i];
+
+    for (int i = 0; i < n; i++)
+        FB[i] = B[i];
+
+    /* FFT */
+    FFT(FA, size, 0);
+    FFT(FB, size, 0);
+
+    /* Point-wise multiplication */
+    for (int i = 0; i < size; i++)
+        FA[i] *= FB[i];
+
+    /* Inverse FFT */
+    FFT(FA, size, 1);
+
+    /* Divide by size */
+    for (int i = 0; i < m + n - 1; i++)
+        C[i] = creal(FA[i]) / size;
+
+    free(FA);
+    free(FB);
+}
+
+int main()
+{
+    int m, n;
+
+    printf("Enter size of vector A: ");
+    scanf("%d", &m);
+
+    printf("Enter size of vector B: ");
     scanf("%d", &n);
 
-    int arr[n];
+    double *A = malloc(m * sizeof(double));
+    double *B = malloc(n * sizeof(double));
+    double *C = malloc((m + n - 1) * sizeof(double));
 
-    FILE *fp = fopen("random.txt", "w");
+    printf("Enter elements of A:\n");
 
-    if (fp == NULL) {
-        printf("Error opening file!\n");
-        return 1;
-    }
+    for (int i = 0; i < m; i++)
+        scanf("%lf", &A[i]);
 
-    // Generate and store random numbers in file
-    srand(time(NULL));
+    printf("Enter elements of B:\n");
 
-    for (int i = 0; i < n; i++) {
-        int num = rand() % 1000;
-        fprintf(fp, "%d ", num);
-    }
+    for (int i = 0; i < n; i++)
+        scanf("%lf", &B[i]);
 
-    fclose(fp);
+    convolution(A, m, B, n, C);
 
-    // Read numbers from file
-    fp = fopen("random.txt", "r");
+    printf("\nConvolution C:\n");
 
-    if (fp == NULL) {
-        printf("Error opening file!\n");
-        return 1;
-    }
+    for (int i = 0; i < m + n - 1; i++)
+        printf("%.2lf ", C[i]);
 
-    for (int i = 0; i < n; i++) {
-        fscanf(fp, "%d", &arr[i]);
-    }
+    printf("\n");
 
-    fclose(fp);
-
-    // Quick Sort
-    quickSort(arr, 0, n - 1);
-
-    // Store sorted elements in another file
-    fp = fopen("sorted.txt", "w");
-
-    if (fp == NULL) {
-        printf("Error opening file!\n");
-        return 1;
-    }
-
-    for (int i = 0; i < n; i++) {
-        fprintf(fp, "%d ", arr[i]);
-    }
-
-    fclose(fp);
-
-    printf("Random elements stored in random.txt\n");
-    printf("Sorted elements stored in sorted.txt\n");
+    free(A);
+    free(B);
+    free(C);
 
     return 0;
 }
