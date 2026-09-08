@@ -1,124 +1,78 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <complex.h>
 
-#define PI acos(-1.0)
+#define INF 1000000000
 
-/* Recursive FFT */
-void FFT(complex double *a, int n, int invert)
-{
+int dp[100][100];
+int split[100];
+
+int min(int a, int b) {
+    return a < b ? a : b;
+}
+
+int hanoi4(int n) {
+    if (n == 0)
+        return 0;
     if (n == 1)
+        return 1;
+
+    if (dp[n][4] != -1)
+        return dp[n][4];
+
+    int best = INF;
+    int bestK = 1;
+
+    for (int k = 1; k < n; k++) {
+        int moves = 2 * hanoi4(k) + ((1 << (n - k)) - 1);
+
+        if (moves < best) {
+            best = moves;
+            bestK = k;
+        }
+    }
+
+    split[n] = bestK;
+    return dp[n][4] = best;
+}
+
+void move3(int n, int from, int to, int aux) {
+    if (n == 0)
         return;
 
-    complex double *even = malloc(n / 2 * sizeof(complex double));
-    complex double *odd  = malloc(n / 2 * sizeof(complex double));
-
-    for (int i = 0; i < n / 2; i++)
-    {
-        even[i] = a[2 * i];
-        odd[i]  = a[2 * i + 1];
-    }
-
-    FFT(even, n / 2, invert);
-    FFT(odd, n / 2, invert);
-
-    double angle = 2 * PI / n * (invert ? -1 : 1);
-    complex double w = 1;
-    complex double wn = cos(angle) + I * sin(angle);
-
-    for (int i = 0; i < n / 2; i++)
-    {
-        complex double t = w * odd[i];
-
-        a[i] = even[i] + t;
-        a[i + n / 2] = even[i] - t;
-
-        w *= wn;
-    }
-
-    free(even);
-    free(odd);
+    move3(n - 1, from, aux, to);
+    printf("%d %d\n", from, to);
+    move3(n - 1, aux, to, from);
 }
 
-/* Convolution using FFT */
-void convolution(double A[], int m,
-                 double B[], int n,
-                 double C[])
-{
-    int size = 1;
+void move4(int n, int from, int to, int aux1, int aux2) {
+    if (n == 0)
+        return;
 
-    while (size < m + n - 1)
-        size *= 2;
+    if (n == 1) {
+        printf("%d %d\n", from, to);
+        return;
+    }
 
-    complex double *FA =
-        calloc(size, sizeof(complex double));
+    int k = split[n];
 
-    complex double *FB =
-        calloc(size, sizeof(complex double));
-
-    /* Copy input vectors */
-    for (int i = 0; i < m; i++)
-        FA[i] = A[i];
-
-    for (int i = 0; i < n; i++)
-        FB[i] = B[i];
-
-    /* FFT */
-    FFT(FA, size, 0);
-    FFT(FB, size, 0);
-
-    /* Point-wise multiplication */
-    for (int i = 0; i < size; i++)
-        FA[i] *= FB[i];
-
-    /* Inverse FFT */
-    FFT(FA, size, 1);
-
-    /* Divide by size */
-    for (int i = 0; i < m + n - 1; i++)
-        C[i] = creal(FA[i]) / size;
-
-    free(FA);
-    free(FB);
+    move4(k, from, aux1, to, aux2);
+    move3(n - k, from, to, aux2);
+    move4(k, aux1, to, from, aux2);
 }
 
-int main()
-{
-    int m, n;
-
-    printf("Enter size of vector A: ");
-    scanf("%d", &m);
-
-    printf("Enter size of vector B: ");
+int main() {
+    int n;
     scanf("%d", &n);
 
-    double *A = malloc(m * sizeof(double));
-    double *B = malloc(n * sizeof(double));
-    double *C = malloc((m + n - 1) * sizeof(double));
+    for (int i = 0; i < 100; i++)
+        for (int j = 0; j < 100; j++)
+            dp[i][j] = -1;
 
-    printf("Enter elements of A:\n");
+    int moves = hanoi4(n);
 
-    for (int i = 0; i < m; i++)
-        scanf("%lf", &A[i]);
+    printf("%d\n", moves);
 
-    printf("Enter elements of B:\n");
-
-    for (int i = 0; i < n; i++)
-        scanf("%lf", &B[i]);
-
-    convolution(A, m, B, n, C);
-
-    printf("\nConvolution C:\n");
-
-    for (int i = 0; i < m + n - 1; i++)
-        printf("%.2lf ", C[i]);
-
-    printf("\n");
-
-    free(A);
-    free(B);
-    free(C);
+    move4(n, 1, 4, 2, 3);
 
     return 0;
 }

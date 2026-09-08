@@ -1,70 +1,58 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-struct Event
-{
-    int point;
-    int type;   // +1 = start, -1 = end
-};
+typedef struct {
+    int year;
+    int type;
+} Event;
 
-// Sort by point.
-// If points are equal, start (+1) comes before end (-1).
-int compare(const void *a, const void *b)
-{
-    struct Event *e1 = (struct Event *)a;
-    struct Event *e2 = (struct Event *)b;
+int compare(const void *a, const void *b) {
+    Event *x = (Event *)a;
+    Event *y = (Event *)b;
 
-    if (e1->point != e2->point)
-        return e1->point - e2->point;
+    if (x->year != y->year)
+        return x->year - y->year;
 
-    return e2->type - e1->type;
+    return x->type - y->type;
 }
 
-int main()
-{
+int main() {
     int n;
-
-    printf("Enter number of intervals: ");
     scanf("%d", &n);
 
-    struct Event events[2 * n];
+    Event events[2 * n];
 
-    printf("Enter the intervals (left right):\n");
+    for (int i = 0; i < n; i++) {
+        int birth, death;
+        scanf("%d %d", &birth, &death);
 
-    for (int i = 0; i < n; i++)
-    {
-        int l, r;
-
-        scanf("%d %d", &l, &r);
-
-        events[2 * i].point = l;
+        events[2 * i].year = birth;
         events[2 * i].type = 1;
 
-        events[2 * i + 1].point = r;
-        events[2 * i + 1].type = -1;
+        events[2 * i + 1].year = death;
+        events[2 * i + 1].type = 0;
     }
 
-    // Sort all events
-    qsort(events, 2 * n, sizeof(struct Event), compare);
+    qsort(events, 2 * n, sizeof(Event), compare);
 
-    int current = 0;
+    int alive = 0;
     int maximum = 0;
-    int maxPoint = 0;
+    int bestYear = 0;
 
-    // Sweep from left to right
-    for (int i = 0; i < 2 * n; i++)
-    {
-        current += events[i].type;
+    for (int i = 0; i < 2 * n; i++) {
+        if (events[i].type == 0) {
+            alive--;
+        } else {
+            alive++;
 
-        if (current > maximum)
-        {
-            maximum = current;
-            maxPoint = events[i].point;
+            if (alive > maximum) {
+                maximum = alive;
+                bestYear = events[i].year;
+            }
         }
     }
 
-    printf("\nPoint with maximum overlap = %d\n", maxPoint);
-    printf("Maximum number of intervals = %d\n", maximum);
+    printf("%d %d\n", bestYear, maximum);
 
     return 0;
 }
