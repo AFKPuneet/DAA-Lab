@@ -5,45 +5,58 @@ int main(void) {
     int n;
 
     if (scanf("%d", &n) != 1 || n <= 0) {
+        fprintf(stderr, "Invalid number of children.\n");
         return 1;
     }
 
-    int *a = malloc((size_t)n * sizeof(int));
-    int *dp = malloc((size_t)n * sizeof(int));
+    int *rating = malloc((size_t)n * sizeof(int));
+    long long *candies = malloc((size_t)n * sizeof(long long));
 
-    if (a == NULL || dp == NULL) {
-        free(a);
-        free(dp);
+    if (rating == NULL || candies == NULL) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        free(rating);
+        free(candies);
         return 1;
     }
 
     for (int i = 0; i < n; i++) {
-        if (scanf("%d", &a[i]) != 1) {
-            free(a);
-            free(dp);
+        if (scanf("%d", &rating[i]) != 1) {
+            fprintf(stderr, "Invalid rating.\n");
+            free(rating);
+            free(candies);
             return 1;
         }
+        candies[i] = 1;
     }
 
-    int longest = 1;
+    /* Ensure each higher-rated child gets more than the left neighbour. */
+    for (int i = 1; i < n; i++) {
+        if (rating[i] > rating[i - 1]) {
+            candies[i] = candies[i - 1] + 1;
+        }
+    }
 
+    /* Ensure each higher-rated child gets more than the right neighbour. */
+    for (int i = n - 2; i >= 0; i--) {
+        if (rating[i] > rating[i + 1] &&
+            candies[i] <= candies[i + 1]) {
+            candies[i] = candies[i + 1] + 1;
+        }
+    }
+
+    long long total = 0;
     for (int i = 0; i < n; i++) {
-        dp[i] = 1;
-
-        for (int j = 0; j < i; j++) {
-            if (a[j] < a[i] && dp[j] + 1 > dp[i]) {
-                dp[i] = dp[j] + 1;
-            }
-        }
-
-        if (dp[i] > longest) {
-            longest = dp[i];
-        }
+        total += candies[i];
     }
 
-    printf("LIS length: %d\n", longest);
+    printf("Minimum candies: %lld\n", total);
+    printf("Candy allocation:");
+    for (int i = 0; i < n; i++) {
+        printf(" %lld", candies[i]);
+    }
+    printf("\n");
 
-    free(a);
-    free(dp);
+    free(rating);
+    free(candies);
     return 0;
 }

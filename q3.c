@@ -1,69 +1,128 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+
+typedef struct {
+    long long distance;
+    long long fuel;
+} Station;
+
+void swap(long long *a, long long *b) {
+    long long temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+void heap_push(long long heap[], int *size, long long fuel) {
+    int i = (*size)++;
+    heap[i] = fuel;
+
+    while (i > 0) {
+        int parent = (i - 1) / 2;
+        if (heap[parent] >= heap[i]) break;
+        swap(&heap[parent], &heap[i]);
+        i = parent;
+    }
+}
+
+long long heap_pop(long long heap[], int *size) {
+    long long maximum = heap[0];
+    heap[0] = heap[--(*size)];
+
+    int i = 0;
+    while (1) {
+        int left = 2 * i + 1;
+        int right = 2 * i + 2;
+        int largest = i;
+
+        if (left < *size && heap[left] > heap[largest]) largest = left;
+        if (right < *size && heap[right] > heap[largest]) largest = right;
+        if (largest == i) break;
+
+        swap(&heap[i], &heap[largest]);
+        i = largest;
+    }
+
+    return maximum;
+}
+
+int compare_stations(const void *a, const void *b) {
+    const Station *x = a;
+    const Station *y = b;
+    return (x->distance > y->distance) - (x->distance < y->distance);
+}
 
 int main(void) {
-    char X[1001], Y[1001];
+    int n;
+    long long target, fuel;
 
-    if (scanf("%1000s %1000s", X, Y) != 2) {
+    /* Input: target distance, starting fuel, station count */
+    if (scanf("%lld %lld %d", &target, &fuel, &n) != 3 ||
+        target < 0 || fuel < 0 || n < 0) {
+        fprintf(stderr, "Invalid input.\n");
         return 1;
     }
 
-    int m = (int)strlen(X);
-    int n = (int)strlen(Y);
+    Station *stations = malloc((size_t)(n + 1) * sizeof(Station));
+    long long *heap = malloc((size_t)(n + 1) * sizeof(long long));
 
-    int **dp = malloc((size_t)(m + 1) * sizeof(int *));
-    if (dp == NULL) return 1;
+    if (stations == NULL || heap == NULL) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        free(stations);
+        free(heap);
+        return 1;
+    }
 
-    for (int i = 0; i <= m; i++) {
-        dp[i] = calloc((size_t)(n + 1), sizeof(int));
-        if (dp[i] == NULL) {
-            for (int k = 0; k < i; k++) free(dp[k]);
-            free(dp);
+    for (int i = 0; i < n; i++) {
+        if (scanf("%lld %lld", &stations[i].distance,
+                  &stations[i].fuel) != 2 ||
+            stations[i].distance < 0 || stations[i].fuel < 0) {
+            fprintf(stderr, "Invalid station data.\n");
+            free(stations);
+            free(heap);
             return 1;
         }
     }
 
-    for (int i = 1; i <= m; i++) {
-        for (int j = 1; j <= n; j++) {
-            if (X[i - 1] == Y[j - 1]) {
-                dp[i][j] = dp[i - 1][j - 1] + 1;
-            } else if (dp[i - 1][j] >= dp[i][j - 1]) {
-                dp[i][j] = dp[i - 1][j];
-            } else {
-                dp[i][j] = dp[i][j - 1];
+    /* The target acts as a final station with no fuel. */
+    stations[n].distance = target;
+    stations[n].fuel = 0;
+    qsort(stations, (size_t)(n + 1), sizeof(Station), compare_stations);
+
+    int heap_size = 0;
+    int stops = 0;
+    long long previous = 0;
+    int possible = 1;
+
+    for (int i = 0; i <= n; i++) {
+        long long travel = stations[i].distance - previous;
+
+        while (fuel < travel) {
+            if (heap_size == 0) {
+                possible = 0;
+                break;
             }
+            fuel += heap_pop(heap, &heap_size);
+            stops++;
+        }
+
+        if (!possible) break;
+
+        fuel -= travel;
+        previous = stations[i].distance;
+
+        /* Make this station's fuel available for future travel. */
+        if (i < n) {
+            heap_push(heap, &heap_size, stations[i].fuel);
         }
     }
 
-    int length = dp[m][n];
-    char *lcs = malloc((size_t)length + 1);
-    if (lcs == NULL) {
-        for (int i = 0; i <= m; i++) free(dp[i]);
-        free(dp);
-        return 1;
+    if (possible) {
+        printf("Minimum refuelling stops: %d\n", stops);
+    } else {
+        printf("Impossible to reach the target.\n");
     }
 
-    lcs[length] = '\0';
-
-    int i = m, j = n, pos = length;
-    while (i > 0 && j > 0) {
-        if (X[i - 1] == Y[j - 1]) {
-            lcs[--pos] = X[i - 1];
-            i--;
-            j--;
-        } else if (dp[i - 1][j] >= dp[i][j - 1]) {
-            i--;
-        } else {
-            j--;
-        }
-    }
-
-    printf("LCS length: %d\n", length);
-    printf("LCS: %s\n", lcs);
-
-    free(lcs);
-    for (int k = 0; k <= m; k++) free(dp[k]);
-    free(dp);
+    free(stations);
+    free(heap);
     return 0;
 }
