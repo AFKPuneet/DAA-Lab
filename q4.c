@@ -1,83 +1,131 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 
-void heap_push(long long heap[], int *size, long long value) {
-    int i = (*size)++;
-    heap[i] = value;
-
-    while (i > 0) {
-        int parent = (i - 1) / 2;
-        if (heap[parent] <= heap[i]) break;
-
-        long long temp = heap[parent];
-        heap[parent] = heap[i];
-        heap[i] = temp;
-        i = parent;
+int find_root(int parent[], int x) {
+    if (parent[x] != x) {
+        parent[x] = find_root(parent, parent[x]);
     }
+    return parent[x];
 }
 
-long long heap_pop(long long heap[], int *size) {
-    long long minimum = heap[0];
-    heap[0] = heap[--(*size)];
+int unite(int parent[], int size[], long long sum[], int a, int b) {
+    int root_a = find_root(parent, a);
+    int root_b = find_root(parent, b);
 
-    int i = 0;
-    while (1) {
-        int left = 2 * i + 1;
-        int right = 2 * i + 2;
-        int smallest = i;
+    if (root_a == root_b) return root_a;
 
-        if (left < *size && heap[left] < heap[smallest]) smallest = left;
-        if (right < *size && heap[right] < heap[smallest]) smallest = right;
-        if (smallest == i) break;
-
-        long long temp = heap[i];
-        heap[i] = heap[smallest];
-        heap[smallest] = temp;
-        i = smallest;
+    if (size[root_a] < size[root_b]) {
+        int temp = root_a;
+        root_a = root_b;
+        root_b = temp;
     }
 
-    return minimum;
+    parent[root_b] = root_a;
+    size[root_a] += size[root_b];
+    sum[root_a] += sum[root_b];
+    return root_a;
 }
 
 int main(void) {
-    int n;
+    int n, m;
 
-    if (scanf("%d", &n) != 1 || n < 0) {
-        fprintf(stderr, "Invalid number of sticks.\n");
+    if (scanf("%d %d", &n, &m) != 2 || n <= 0 || m < 0) {
+        fprintf(stderr, "Invalid graph size.\n");
         return 1;
     }
 
-    long long *heap = malloc((size_t)(n > 0 ? n : 1) * sizeof(long long));
-    if (heap == NULL) {
+    long long *weight = malloc((size_t)n * sizeof(long long));
+    int *head = malloc((size_t)n * sizeof(int));
+    int *to = malloc((size_t)(2 * m) * sizeof(int));
+    int *next = malloc((size_t)(2 * m) * sizeof(int));
+    int *parent = malloc((size_t)n * sizeof(int));
+    int *size = malloc((size_t)n * sizeof(int));
+    long long *sum = malloc((size_t)n * sizeof(long long));
+    int *order = malloc((size_t)n * sizeof(int));
+    int *answer = malloc((size_t)n * sizeof(int));
+    char *active = calloc((size_t)n, sizeof(char));
+
+    if (!weight || !head || !to || !next || !parent || !size ||
+        !sum || !order || !answer || !active) {
         fprintf(stderr, "Memory allocation failed.\n");
+        free(weight); free(head); free(to); free(next);
+        free(parent); free(size); free(sum); free(order);
+        free(answer); free(active);
         return 1;
     }
-
-    int size = 0;
 
     for (int i = 0; i < n; i++) {
-        long long length;
-        if (scanf("%lld", &length) != 1 || length < 0) {
-            fprintf(stderr, "Invalid stick length.\n");
-            free(heap);
+        if (scanf("%lld", &weight[i]) != 1) {
+            fprintf(stderr, "Invalid vertex weight.\n");
             return 1;
         }
-        heap_push(heap, &size, length);
+        head[i] = -1;
+        parent[i] = i;
+        size[i] = 1;
+        sum[i] = weight[i];
     }
 
-    long long total_cost = 0;
+    int edge_index = 0;
+    for (int i = 0; i < m; i++) {
+        int u, v;
 
-    while (size > 1) {
-        long long first = heap_pop(heap, &size);
-        long long second = heap_pop(heap, &size);
-        long long combined = first + second;
+        if (scanf("%d %d", &u, &v) != 2 ||
+            u < 1 || u > n || v < 1 || v > n) {
+            fprintf(stderr, "Invalid edge. Use vertices numbered 1 to n.\n");
+            return 1;
+        }
 
-        total_cost += combined;
-        heap_push(heap, &size, combined);
+        u--;
+        v--;
+
+        to[edge_index] = v;
+        next[edge_index] = head[u];
+        head[u] = edge_index++;
+
+        to[edge_index] = u;
+        next[edge_index] = head[v];
+        head[v] = edge_index++;
     }
 
-    printf("Minimum total cost: %lld\n", total_cost);
+    for (int i = 0; i < n; i++) {
+        if (scanf("%d", &order[i]) != 1 ||
+            order[i] < 1 || order[i] > n) {
+            fprintf(stderr, "Invalid deletion order.\n");
+            return 1;
+        }
+        order[i]--;
+    }
 
-    free(heap);
+    long long maximum = 0;
+
+    for (int i = n - 1; i >= 0; i--) {
+        /* Current graph is the state after forward deletion i+1. */
+        answer[i] = (int)maximum;
+
+        int vertex = order[i];
+        active[vertex] = 1;
+        maximum = weight[vertex];
+
+        for (int e = head[vertex]; e != -1; e = next[e]) {
+            int neighbor = to[e];
+
+            if (active[neighbor]) {
+                int root = unite(parent, size, sum, vertex, neighbor);
+                if (sum[root] > maximum) {
+                    maximum = sum[root];
+                }
+            }
+        }
+    }
+
+    printf("Maximum component weight after each deletion:\n");
+    for (int i = 0; i < n; i++) {
+        printf("%d\n", answer[i]);
+    }
+
+    free(weight); free(head); free(to); free(next);
+    free(parent); free(size); free(sum); free(order);
+    free(answer); free(active);
     return 0;
 }

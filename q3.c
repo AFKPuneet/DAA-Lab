@@ -1,128 +1,108 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 
-typedef struct {
-    long long distance;
-    long long fuel;
-} Station;
-
-void swap(long long *a, long long *b) {
-    long long temp = *a;
-    *a = *b;
-    *b = temp;
-}
-
-void heap_push(long long heap[], int *size, long long fuel) {
-    int i = (*size)++;
-    heap[i] = fuel;
-
-    while (i > 0) {
-        int parent = (i - 1) / 2;
-        if (heap[parent] >= heap[i]) break;
-        swap(&heap[parent], &heap[i]);
-        i = parent;
+int find_root(int parent[], int x) {
+    if (parent[x] != x) {
+        parent[x] = find_root(parent, parent[x]);
     }
+    return parent[x];
 }
 
-long long heap_pop(long long heap[], int *size) {
-    long long maximum = heap[0];
-    heap[0] = heap[--(*size)];
+void unite(int parent[], int size[], long long sum[], int a, int b) {
+    int root_a = find_root(parent, a);
+    int root_b = find_root(parent, b);
 
-    int i = 0;
-    while (1) {
-        int left = 2 * i + 1;
-        int right = 2 * i + 2;
-        int largest = i;
+    if (root_a == root_b) return;
 
-        if (left < *size && heap[left] > heap[largest]) largest = left;
-        if (right < *size && heap[right] > heap[largest]) largest = right;
-        if (largest == i) break;
-
-        swap(&heap[i], &heap[largest]);
-        i = largest;
+    if (size[root_a] < size[root_b]) {
+        int temp = root_a;
+        root_a = root_b;
+        root_b = temp;
     }
 
-    return maximum;
+    parent[root_b] = root_a;
+    size[root_a] += size[root_b];
+    sum[root_a] += sum[root_b];
 }
 
-int compare_stations(const void *a, const void *b) {
-    const Station *x = a;
-    const Station *y = b;
-    return (x->distance > y->distance) - (x->distance < y->distance);
+void report_maximum(int n, int parent[], int size[],
+                    long long sum[], int limit) {
+    int found = 0;
+    long long maximum = LLONG_MIN;
+
+    for (int i = 0; i < n; i++) {
+        if (find_root(parent, i) == i && size[i] <= limit) {
+            if (!found || sum[i] > maximum) {
+                maximum = sum[i];
+                found = 1;
+            }
+        }
+    }
+
+    if (found) {
+        printf("%lld\n", maximum);
+    } else {
+        printf("No component has size at most K\n");
+    }
 }
 
 int main(void) {
-    int n;
-    long long target, fuel;
+    int n, m, limit;
 
-    /* Input: target distance, starting fuel, station count */
-    if (scanf("%lld %lld %d", &target, &fuel, &n) != 3 ||
-        target < 0 || fuel < 0 || n < 0) {
+    if (scanf("%d %d %d", &n, &m, &limit) != 3 ||
+        n <= 0 || m < 0 || limit < 0) {
         fprintf(stderr, "Invalid input.\n");
         return 1;
     }
 
-    Station *stations = malloc((size_t)(n + 1) * sizeof(Station));
-    long long *heap = malloc((size_t)(n + 1) * sizeof(long long));
+    int *parent = malloc((size_t)n * sizeof(int));
+    int *size = malloc((size_t)n * sizeof(int));
+    long long *sum = malloc((size_t)n * sizeof(long long));
 
-    if (stations == NULL || heap == NULL) {
+    if (parent == NULL || size == NULL || sum == NULL) {
         fprintf(stderr, "Memory allocation failed.\n");
-        free(stations);
-        free(heap);
+        free(parent);
+        free(size);
+        free(sum);
         return 1;
     }
 
     for (int i = 0; i < n; i++) {
-        if (scanf("%lld %lld", &stations[i].distance,
-                  &stations[i].fuel) != 2 ||
-            stations[i].distance < 0 || stations[i].fuel < 0) {
-            fprintf(stderr, "Invalid station data.\n");
-            free(stations);
-            free(heap);
+        if (scanf("%lld", &sum[i]) != 1) {
+            fprintf(stderr, "Invalid vertex weight.\n");
+            free(parent);
+            free(size);
+            free(sum);
             return 1;
         }
+        parent[i] = i;
+        size[i] = 1;
     }
 
-    /* The target acts as a final station with no fuel. */
-    stations[n].distance = target;
-    stations[n].fuel = 0;
-    qsort(stations, (size_t)(n + 1), sizeof(Station), compare_stations);
+    printf("Initial maximum: ");
+    report_maximum(n, parent, size, sum, limit);
 
-    int heap_size = 0;
-    int stops = 0;
-    long long previous = 0;
-    int possible = 1;
+    for (int i = 0; i < m; i++) {
+        int u, v;
 
-    for (int i = 0; i <= n; i++) {
-        long long travel = stations[i].distance - previous;
-
-        while (fuel < travel) {
-            if (heap_size == 0) {
-                possible = 0;
-                break;
-            }
-            fuel += heap_pop(heap, &heap_size);
-            stops++;
+        if (scanf("%d %d", &u, &v) != 2 ||
+            u < 1 || u > n || v < 1 || v > n) {
+            fprintf(stderr, "Invalid edge. Use vertices numbered 1 to n.\n");
+            free(parent);
+            free(size);
+            free(sum);
+            return 1;
         }
 
-        if (!possible) break;
+        unite(parent, size, sum, u - 1, v - 1);
 
-        fuel -= travel;
-        previous = stations[i].distance;
-
-        /* Make this station's fuel available for future travel. */
-        if (i < n) {
-            heap_push(heap, &heap_size, stations[i].fuel);
-        }
+        printf("After edge %d: ", i + 1);
+        report_maximum(n, parent, size, sum, limit);
     }
 
-    if (possible) {
-        printf("Minimum refuelling stops: %d\n", stops);
-    } else {
-        printf("Impossible to reach the target.\n");
-    }
-
-    free(stations);
-    free(heap);
+    free(parent);
+    free(size);
+    free(sum);
     return 0;
 }

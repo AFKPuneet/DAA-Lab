@@ -1,139 +1,101 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <float.h>
-#include <math.h>
-
-#define EPS 1e-9
 
 typedef struct {
-    double value;
-    double weight;
-    double rate;       /* Initial value density: value / weight */
-    double decay;      /* Density decreases by decay per time unit */
-    double remaining;  /* Remaining available weight */
-    double used;       /* Total weight selected */
-} Item;
+    int *parent;
+    int *size;
+    int *parity;  /* Color difference from this vertex to its parent */
+} DSU;
+
+int find(DSU *dsu, int x) {
+    if (dsu->parent[x] != x) {
+        int old_parent = dsu->parent[x];
+        dsu->parent[x] = find(dsu, old_parent);
+        dsu->parity[x] ^= dsu->parity[old_parent];
+    }
+    return dsu->parent[x];
+}
+
+/* Add constraint that u and v must have opposite colors. */
+int add_opposite_edge(DSU *dsu, int u, int v) {
+    int root_u = find(dsu, u);
+    int parity_u = dsu->parity[u];
+
+    int root_v = find(dsu, v);
+    int parity_v = dsu->parity[v];
+
+    if (root_u == root_v) {
+        /* They must already have opposite colors. */
+        return (parity_u ^ parity_v) == 1;
+    }
+
+    /* Merge by size; root parity must enforce opposite colors. */
+    if (dsu->size[root_u] < dsu->size[root_v]) {
+        dsu->parent[root_u] = root_v;
+        dsu->parity[root_u] = parity_u ^ parity_v ^ 1;
+        dsu->size[root_v] += dsu->size[root_u];
+    } else {
+        dsu->parent[root_v] = root_u;
+        dsu->parity[root_v] = parity_u ^ parity_v ^ 1;
+        dsu->size[root_u] += dsu->size[root_v];
+    }
+
+    return 1;
+}
 
 int main(void) {
-    int n;
-    double capacity;
+    int vertices, edge_count;
 
-    if (scanf("%d %lf", &n, &capacity) != 2 || n <= 0 || capacity < 0) {
-        fprintf(stderr, "Invalid input.\n");
+    if (scanf("%d %d", &vertices, &edge_count) != 2 ||
+        vertices <= 0 || edge_count < 0) {
+        fprintf(stderr, "Invalid graph size.\n");
         return 1;
     }
 
-    Item *items = calloc((size_t)n, sizeof(Item));
-    if (items == NULL) {
+    DSU dsu;
+    dsu.parent = malloc((size_t)vertices * sizeof(int));
+    dsu.size = malloc((size_t)vertices * sizeof(int));
+    dsu.parity = calloc((size_t)vertices, sizeof(int));
+
+    if (!dsu.parent || !dsu.size || !dsu.parity) {
         fprintf(stderr, "Memory allocation failed.\n");
+        free(dsu.parent);
+        free(dsu.size);
+        free(dsu.parity);
         return 1;
     }
 
-    for (int i = 0; i < n; i++) {
-        if (scanf("%lf %lf %lf",
-                  &items[i].value, &items[i].weight, &items[i].decay) != 3 ||
-            items[i].weight <= 0 || items[i].decay <= 0) {
-            fprintf(stderr, "Each item needs positive weight and decay rate.\n");
-            free(items);
+    for (int i = 0; i < vertices; i++) {
+        dsu.parent[i] = i;
+        dsu.size[i] = 1;
+    }
+
+    for (int i = 0; i < edge_count; i++) {
+        int u, v;
+
+        if (scanf("%d %d", &u, &v) != 2 ||
+            u < 1 || u > vertices || v < 1 || v > vertices) {
+            fprintf(stderr, "Invalid edge. Use vertices numbered 1 to V.\n");
+            free(dsu.parent);
+            free(dsu.size);
+            free(dsu.parity);
             return 1;
         }
 
-        items[i].rate = items[i].value / items[i].weight;
-        items[i].remaining = items[i].weight;
+        /* Convert to zero-based indices. */
+        u--;
+        v--;
+
+        if (add_opposite_edge(&dsu, u, v)) {
+            printf("Edge (%d, %d): accepted\n", u + 1, v + 1);
+        } else {
+            printf("Edge (%d, %d): rejected (would violate bipartiteness)\n",
+                   u + 1, v + 1);
+        }
     }
 
-    double time = 0.0;
-    double total_value = 0.0;
-    double capacity_left = capacity;
-
-    printf("Processing schedule (item, weight processed, start time, end time):\n");
-
-    while (capacity_left > EPS) {
-        int chosen = -1;
-        double best_density = -DBL_MAX;
-
-        /* Find the available item with the highest current density. */
-        for (int i = 0; i < n; i++) {
-            if (items[i].remaining <= EPS) continue;
-
-            double density = items[i].rate - items[i].decay * time;
-
-            if (density > best_density + EPS ||
-                (fabs(density - best_density) <= EPS &&
-                 chosen >= 0 && items[i].decay < items[chosen].decay)) {
-                best_density = density;
-                chosen = i;
-            }
-        }
-
-        /* No positive-value work remains. */
-        if (chosen < 0 || best_density <= EPS) {
-            break;
-        }
-
-        double duration = capacity_left;
-
-        /* Stop when this item's available weight is exhausted. */
-        if (items[chosen].remaining < duration) {
-            duration = items[chosen].remaining;
-        }
-
-        /* Stop when its density reaches zero. */
-        double zero_time = items[chosen].rate / items[chosen].decay;
-        double until_zero = zero_time - time;
-        if (until_zero < duration) {
-            duration = until_zero;
-        }
-
-        /*
-         * Stop when another remaining item's density catches up.
-         * Only an item with a slower decay rate can catch the chosen item.
-         */
-        for (int j = 0; j < n; j++) {
-            if (j == chosen || items[j].remaining <= EPS) continue;
-
-            double decay_difference = items[chosen].decay - items[j].decay;
-            if (decay_difference <= EPS) continue;
-
-            double crossing_time =
-                (items[chosen].rate - items[j].rate) / decay_difference;
-
-            double until_crossing = crossing_time - time;
-            if (until_crossing > EPS && until_crossing < duration) {
-                duration = until_crossing;
-            }
-        }
-
-        if (duration <= EPS) {
-            break;
-        }
-
-        double start_time = time;
-        double end_time = time + duration;
-
-        /* Integrate density over this processing interval. */
-        total_value += items[chosen].rate * duration
-                     - 0.5 * items[chosen].decay
-                       * (end_time * end_time - start_time * start_time);
-
-        items[chosen].remaining -= duration;
-        items[chosen].used += duration;
-        capacity_left -= duration;
-        time = end_time;
-
-        printf("%d, %.6f, %.6f, %.6f\n",
-               chosen + 1, duration, start_time, end_time);
-    }
-
-    printf("Total value: %.6f\n", total_value);
-    printf("Selected weight by item:\n");
-
-    for (int i = 0; i < n; i++) {
-        printf("Item %d: %.6f\n", i + 1, items[i].used);
-    }
-
-    printf("Total weight selected: %.6f\n", capacity - capacity_left);
-
-    free(items);
+    free(dsu.parent);
+    free(dsu.size);
+    free(dsu.parity);
     return 0;
 }
