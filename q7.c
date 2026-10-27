@@ -1,54 +1,71 @@
 #include <stdio.h>
-#include <limits.h>
+#include <stdlib.h>
+#include <string.h>
 
-int main() {
-    int n;
-    scanf("%d", &n);
+int main(void) {
+    char A[1001], B[1001];
 
-    int p[n + 1];
+    if (scanf("%1000s %1000s", A, B) != 2) {
+        return 1;
+    }
 
-    for (int i = 0; i <= n; i++)
-        scanf("%d", &p[i]);
+    int m = (int)strlen(A);
+    int n = (int)strlen(B);
 
-    long long dp[n + 1][n + 1];
-    int split[n + 1][n + 1];
+    int **dp = malloc((size_t)(m + 1) * sizeof(int *));
+    if (dp == NULL) return 1;
 
-    for (int i = 1; i <= n; i++)
-        dp[i][i] = 0;
-
-    for (int len = 2; len <= n; len++) {
-        for (int i = 1; i <= n - len + 1; i++) {
-            int j = i + len - 1;
-            dp[i][j] = LLONG_MAX;
-
-            for (int k = i; k < j; k++) {
-                long long cost = dp[i][k] +
-                                 dp[k + 1][j] +
-                                 (long long)p[i - 1] * p[k] * p[j];
-
-                if (cost < dp[i][j]) {
-                    dp[i][j] = cost;
-                    split[i][j] = k;
-                }
-            }
+    for (int i = 0; i <= m; i++) {
+        dp[i] = malloc((size_t)(n + 1) * sizeof(int));
+        if (dp[i] == NULL) {
+            for (int k = 0; k < i; k++) free(dp[k]);
+            free(dp);
+            return 1;
         }
     }
 
-    void printOrder(int i, int j) {
-        if (i == j) {
-            printf("A%d", i);
-            return;
-        }
+    for (int i = 0; i <= m; i++) dp[i][0] = i;
+    for (int j = 0; j <= n; j++) dp[0][j] = j;
 
-        printf("(");
-        printOrder(i, split[i][j]);
-        printOrder(split[i][j] + 1, j);
-        printf(")");
+    for (int i = 1; i <= m; i++) {
+        for (int j = 1; j <= n; j++) {
+            int cost = (A[i - 1] == B[j - 1]) ? 0 : 1;
+            int deletion = dp[i - 1][j] + 1;
+            int insertion = dp[i][j - 1] + 1;
+            int substitution = dp[i - 1][j - 1] + cost;
+
+            dp[i][j] = deletion;
+            if (insertion < dp[i][j]) dp[i][j] = insertion;
+            if (substitution < dp[i][j]) dp[i][j] = substitution;
+        }
     }
 
-    printf("%lld\n", dp[1][n]);
-    printOrder(1, n);
-    printf("\n");
+    printf("Edit distance: %d\n", dp[m][n]);
+    printf("Edits (from A to B):\n");
 
+    int i = m, j = n;
+
+    while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 &&
+            A[i - 1] == B[j - 1] &&
+            dp[i][j] == dp[i - 1][j - 1]) {
+            i--;
+            j--;
+        } else if (i > 0 && j > 0 &&
+                   dp[i][j] == dp[i - 1][j - 1] + 1) {
+            printf("Substitute '%c' with '%c'\n", A[i - 1], B[j - 1]);
+            i--;
+            j--;
+        } else if (i > 0 && dp[i][j] == dp[i - 1][j] + 1) {
+            printf("Delete '%c'\n", A[i - 1]);
+            i--;
+        } else {
+            printf("Insert '%c'\n", B[j - 1]);
+            j--;
+        }
+    }
+
+    for (int k = 0; k <= m; k++) free(dp[k]);
+    free(dp);
     return 0;
 }

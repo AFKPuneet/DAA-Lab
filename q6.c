@@ -1,58 +1,50 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 
-typedef struct {
-    int year;
-    int type;
-} Event;
-
-int compare(const void *a, const void *b) {
-    Event *x = (Event *)a;
-    Event *y = (Event *)b;
-
-    if (x->year != y->year)
-        return x->year - y->year;
-
-    return x->type - y->type;
-}
-
-int main() {
+int main(void) {
     int n;
-    scanf("%d", &n);
 
-    Event events[2 * n];
-
-    for (int i = 0; i < n; i++) {
-        int birth, death;
-        scanf("%d %d", &birth, &death);
-
-        events[2 * i].year = birth;
-        events[2 * i].type = 1;
-
-        events[2 * i + 1].year = death;
-        events[2 * i + 1].type = 0;
+    if (scanf("%d", &n) != 1 || n <= 0) {
+        return 1;
     }
 
-    qsort(events, 2 * n, sizeof(Event), compare);
+    long long *a = malloc((size_t)n * sizeof(long long));
+    long long *dp = malloc((size_t)n * sizeof(long long));
 
-    int alive = 0;
-    int maximum = 0;
-    int bestYear = 0;
+    if (a == NULL || dp == NULL) {
+        free(a);
+        free(dp);
+        return 1;
+    }
 
-    for (int i = 0; i < 2 * n; i++) {
-        if (events[i].type == 0) {
-            alive--;
-        } else {
-            alive++;
-
-            if (alive > maximum) {
-                maximum = alive;
-                bestYear = events[i].year;
-            }
+    for (int i = 0; i < n; i++) {
+        if (scanf("%lld", &a[i]) != 1) {
+            free(a);
+            free(dp);
+            return 1;
         }
     }
 
-    printf("%d %d\n", bestYear, maximum);
+    long long best = LLONG_MIN;
 
+    for (int i = 0; i < n; i++) {
+        dp[i] = a[i];
+
+        for (int j = 0; j < i; j++) {
+            if (a[j] < a[i] && dp[j] + a[i] > dp[i]) {
+                dp[i] = dp[j] + a[i];
+            }
+        }
+
+        if (dp[i] > best) {
+            best = dp[i];
+        }
+    }
+
+    printf("Maximum sum: %lld\n", best);
+
+    free(a);
+    free(dp);
     return 0;
 }

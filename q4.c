@@ -1,20 +1,33 @@
 #include <stdio.h>
+#include <stdlib.h>
 
-long long solve(int n) {
-    if (n == 0)
-        return 0;
-
-    if (n == 1)
-        return 1;
-
-    return ((1LL << (n + 1)) - 1) / 3;
-}
-
-int main() {
+int main(void) {
     int n;
-    scanf("%d", &n);
 
-    printf("%lld\n", solve(n));
+    if (scanf("%d", &n) != 1 || n <= 0) {
+        return 1;
+    }
 
-    return 0;
-}
+    int *a = malloc((size_t)n * sizeof(int));
+    int *dp = malloc((size_t)n * sizeof(int));
+    if (a == NULL || dp == NULL) {
+        free(a);
+        free(dp);
+        return 1;
+    }
+
+    for (int i = 0; i < n; i++) {
+        if (scanf("%d", &a[i]) != 1) {
+            free(a);
+            free(dp);
+            return 1;
+        }
+    }
+
+    int longest = 1;
+
+    for (int i = 0; i < n; i++) {
+        dp[i] = 1;
+
+        for (int j = 0; j < i; j++) {
+            if (a

@@ -1,37 +1,49 @@
 #include <stdio.h>
-#include <limits.h>
+#include <stdlib.h>
 
-int main() {
-    int E, F;
-    scanf("%d %d", &E, &F);
+int main(void) {
+    int n, amount;
 
-    int dp[E + 1][F + 1];
-
-    for (int e = 1; e <= E; e++) {
-        dp[e][0] = 0;
-        dp[e][1] = 1;
+    if (scanf("%d", &n) != 1 || n <= 0) {
+        return 1;
     }
 
-    for (int f = 0; f <= F; f++)
-        dp[1][f] = f;
+    int *coins = malloc((size_t)n * sizeof(int));
+    if (coins == NULL) {
+        return 1;
+    }
 
-    for (int e = 2; e <= E; e++) {
-        for (int f = 2; f <= F; f++) {
-            dp[e][f] = INT_MAX;
-
-            for (int x = 1; x <= f; x++) {
-                int attempts = 1;
-                int broken = dp[e - 1][x - 1];
-                int survived = dp[e][f - x];
-                int worst = attempts + (broken > survived ? broken : survived);
-
-                if (worst < dp[e][f])
-                    dp[e][f] = worst;
-            }
+    for (int i = 0; i < n; i++) {
+        if (scanf("%d", &coins[i]) != 1 || coins[i] <= 0) {
+            free(coins);
+            return 1;
         }
     }
 
-    printf("%d\n", dp[E][F]);
+    if (scanf("%d", &amount) != 1 || amount < 0) {
+        free(coins);
+        return 1;
+    }
 
+    unsigned long long *ways =
+        calloc((size_t)amount + 1, sizeof(unsigned long long));
+
+    if (ways == NULL) {
+        free(coins);
+        return 1;
+    }
+
+    ways[0] = 1;
+
+    for (int i = 0; i < n; i++) {
+        for (int value = coins[i]; value <= amount; value++) {
+            ways[value] += ways[value - coins[i]];
+        }
+    }
+
+    printf("%llu\n", ways[amount]);
+
+    free(ways);
+    free(coins);
     return 0;
 }

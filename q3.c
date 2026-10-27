@@ -1,78 +1,69 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-#define INF 1000000000
+int main(void) {
+    char X[1001], Y[1001];
 
-int dp[100][100];
-int split[100];
-
-int min(int a, int b) {
-    return a < b ? a : b;
-}
-
-int hanoi4(int n) {
-    if (n == 0)
-        return 0;
-    if (n == 1)
+    if (scanf("%1000s %1000s", X, Y) != 2) {
         return 1;
+    }
 
-    if (dp[n][4] != -1)
-        return dp[n][4];
+    int m = (int)strlen(X);
+    int n = (int)strlen(Y);
 
-    int best = INF;
-    int bestK = 1;
+    int **dp = malloc((size_t)(m + 1) * sizeof(int *));
+    if (dp == NULL) return 1;
 
-    for (int k = 1; k < n; k++) {
-        int moves = 2 * hanoi4(k) + ((1 << (n - k)) - 1);
-
-        if (moves < best) {
-            best = moves;
-            bestK = k;
+    for (int i = 0; i <= m; i++) {
+        dp[i] = calloc((size_t)(n + 1), sizeof(int));
+        if (dp[i] == NULL) {
+            for (int k = 0; k < i; k++) free(dp[k]);
+            free(dp);
+            return 1;
         }
     }
 
-    split[n] = bestK;
-    return dp[n][4] = best;
-}
-
-void move3(int n, int from, int to, int aux) {
-    if (n == 0)
-        return;
-
-    move3(n - 1, from, aux, to);
-    printf("%d %d\n", from, to);
-    move3(n - 1, aux, to, from);
-}
-
-void move4(int n, int from, int to, int aux1, int aux2) {
-    if (n == 0)
-        return;
-
-    if (n == 1) {
-        printf("%d %d\n", from, to);
-        return;
+    for (int i = 1; i <= m; i++) {
+        for (int j = 1; j <= n; j++) {
+            if (X[i - 1] == Y[j - 1]) {
+                dp[i][j] = dp[i - 1][j - 1] + 1;
+            } else if (dp[i - 1][j] >= dp[i][j - 1]) {
+                dp[i][j] = dp[i - 1][j];
+            } else {
+                dp[i][j] = dp[i][j - 1];
+            }
+        }
     }
 
-    int k = split[n];
+    int length = dp[m][n];
+    char *lcs = malloc((size_t)length + 1);
+    if (lcs == NULL) {
+        for (int i = 0; i <= m; i++) free(dp[i]);
+        free(dp);
+        return 1;
+    }
 
-    move4(k, from, aux1, to, aux2);
-    move3(n - k, from, to, aux2);
-    move4(k, aux1, to, from, aux2);
-}
+    lcs[length] = '\0';
 
-int main() {
-    int n;
-    scanf("%d", &n);
+    int i = m, j = n, pos = length;
+    while (i > 0 && j > 0) {
+        if (X[i - 1] == Y[j - 1]) {
+            lcs[--pos] = X[i - 1];
+            i--;
+            j--;
+        } else if (dp[i - 1][j] >= dp[i][j - 1]) {
+            i--;
+        } else {
+            j--;
+        }
+    }
 
-    for (int i = 0; i < 100; i++)
-        for (int j = 0; j < 100; j++)
-            dp[i][j] = -1;
+    printf("LCS length: %d\n", length);
+    printf("LCS: %s\n", lcs);
 
-    int moves = hanoi4(n);
-
-    printf("%d\n", moves);
-
-    move4(n, 1, 4, 2, 3);
-
+    free(lcs);
+    for (int k = 0; k <= m; k++) free(dp[k]);
+    free(dp);
     return 0;
 }
